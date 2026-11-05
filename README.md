@@ -1,57 +1,28 @@
-# Пошаговое выполнение задания MySQL + Docker
+## Шаг 1. Проверка Docker
 
-Я изучил твой файл `MySQL.md`. Ниже распишу выполнение по порядку: от запуска MySQL в Docker до создания таблиц, выполнения SQL-запросов и сохранения резервной копии базы данных.
-
-Будем работать в Windows через Git Bash (MINGW64) и Docker Desktop. Команды приведены так, чтобы можно было копировать их по очереди.
-
-## Что нужно сделать
-
-Чек-лист выполнения
-
-0 из 10
-
-1\. Подготовить папку проекта и файл my.cnf
-
-2\. Запустить контейнер MySQL
-
-3\. Подключиться к MySQL
-
-4\. Создать базу данных и таблицы
-
-5\. Добавить данные и проверить CRUD-операции
-
-6\. Выполнить фильтрацию, сортировку и агрегирование
-
-7\. Изучить JOIN, подзапросы и UNION
-
-8\. Изменить данные и структуру таблиц
-
-9\. Создать дамп базы данных
-
-10\. Проверить результат и сохранить скриншоты
-
-## Шаг 1. Подготовь окружение
-
-### 1.1. Запусти Docker Desktop
-
-1. Открой Docker Desktop.
-2. Дождись, пока Docker Engine запустится.
-3. Открой Git Bash.
-4. Выполни команду:
+Открой Git Bash и проверь, работает ли Docker:
 
 ```
 docker --version
 ```
 
-Проверь, что Docker отвечает:
+Затем:
 
 ```
-docker info
+docker ps -a
 ```
 
-Если команды выводят информацию о Docker, можно продолжать. Если появляется ошибка подключения к Docker daemon, сначала запусти Docker Desktop.
+Если Docker не запущен, открой Docker Desktop и дождись запуска Docker Engine.
 
-### 1.2. Создай папку проекта
+[Pico C/C++ Development with Visual Studio Code (VS Code): A Development Container Approach! - element14 Community](https://images.openai.com/static-rsc-4/kdrYl6ZnLedXnTM9ZWOVuMjcVSMdnSzeaC57f0FJxc7sDzC8Fxx7iVMMw0k9IHPsOeG3ZRExzW2UMpPC_lJ3LTjIBcHBxELClLpdIfTD2RCi8hbv8E8VF3TOUoxkUNgI4NgoahjsZx_hKmMwTXipPHU8XrykYZD638UkN2mgur8?purpose=inline)
+
+[community.element14.com](https://community.element14.com/products/raspberry-pi/b/blog/posts/pico-c-c-development-with-visual-studio-code-vs-code-a-development-container-approach?utm_source=chatgpt.com)
+
+Важно: в исходном задании предлагается остановить все контейнеры и удалить неиспользуемые тома. Не рекомендую делать это без необходимости: можно потерять данные других проектов.
+
+Для этого задания достаточно создать отдельный контейнер.
+
+## Шаг 2. Создание папки проекта
 
 В Git Bash выполни:
 
@@ -60,125 +31,119 @@ mkdir -p ~/my-mysql
 cd ~/my-mysql
 ```
 
-Проверь расположение:
+Проверь текущую директорию:
 
 ```
 pwd
 ```
 
-Внутри этой папки будут конфигурация MySQL и резервная копия базы данных.
-
-### 1.3. Создай файл `my.cnf`
-
-Выполни:
+Теперь создай конфигурационный файл:
 
 ```
-nano my.cnf
+touch my.cnf
 ```
 
-Вставь следующее содержимое:
+Открой его в Блокноте:
 
 ```
+notepad my.cnf
+```
+
+Вставь следующий текст:
+
+```
+
 [mysqld]
 character-set-server = utf8mb4
 collation-server = utf8mb4_unicode_ci
+general_log = 1
+general_log_file = /var/lib/mysql/general.log
+log_output = FILE
 
 [client]
 default-character-set = utf8mb4
 
 [mysql]
 default-character-set = utf8mb4
-```
-
-Сохрани файл в `nano`:
-
-1. Нажми `Ctrl + O`.
-2. Нажми `Enter`.
-3. Нажми `Ctrl + X`.
-
-Проверь, что файл создан:
 
 ```
-cat my.cnf
+
+Сохрани файл и закрой Блокнот.
+
+Для чего нужен этот файл?
+
+- `utf8mb4` — поддержка русского языка и специальных символов.
+- `utf8mb4_unicode_ci` — правила сравнения текстовых данных.
+- `general_log = 1` — включение журнала SQL-команд.
+- `general_log_file` — расположение файла журнала.
+
+## Шаг 3. Запуск контейнера MySQL
+
+Выполни команду:
+
 ```
-
-Зачем это нужно? Настройки `utf8mb4` позволяют корректно хранить и отображать русский текст и другие Unicode-символы.
-
-## Шаг 2. Запусти контейнер MySQL
-
-Находясь в папке `~/my-mysql`, выполни:
-
-```
-docker run --name my-mysql \
+MSYS_NO_PATHCONV=1 docker run --name my-mysql \
   -e MYSQL_ROOT_PASSWORD=123 \
   -e LANG=C.UTF-8 \
   -v mysql_data:/var/lib/mysql \
-  -v "$(pwd -W)/my.cnf:/etc/mysql/conf.d/my.cnf:ro" \
-  -d mysql:latest
+  -v "$(pwd -W)/my.cnf:/etc/mysql/conf.d/my.cnf" \
+  -d mysql:8.0
 ```
 
-В этой команде:
+Если Docker сообщает, что контейнер с именем my-mysql уже существует, сначала проверь его состояние командой docker ps -a.
 
-- `--name my-mysql` — имя контейнера.
-- `MYSQL_ROOT_PASSWORD=123` — учебный пароль пользователя `root`.
-- `mysql_data` — хранилище данных, сохраняющееся при удалении самого контейнера.
-- `my.cnf` — настройки кодировки.
-- `-d` — запуск в фоновом режиме.
-- `mysql:latest` — официальный образ MySQL.
+Разберём параметры:
 
-Пароль 123 подходит только для учебного примера. Для реального сервера используй надёжный пароль.
+| Параметр                  | Назначение              |
+| ------------------------- | ----------------------- |
+| `--name my-mysql`         | Имя контейнера          |
+| `MYSQL_ROOT_PASSWORD=123` | Пароль root             |
+| `LANG=C.UTF-8`            | Локаль                  |
+| `mysql_data`              | Том для хранения данных |
+| `my.cnf`                  | Конфигурация MySQL      |
+| `-d`                      | Запуск в фоне           |
+| `mysql:8.0`               | Версия MySQL            |
 
-### 2.1. Проверь запуск
+Проверь, что контейнер запущен:
 
 ```
 docker ps
 ```
 
+[SK네트웍스 AI캠프 8일차 - MySQL, ERD](https://images.openai.com/static-rsc-4/J5zaqLKLErQJrm1YkyUWQou7QPjl2c_srn1Z0v_5SgTbj1MZ9ePf_TdFQyFVFOVNviEd8RcUdPQLiwYeReRzE4omu4pFgoqj1VlM_FzSO0Hlzl_QEIQIsRh0saCwEBbcbHBJMLqoO2mwb6VO4zxqxTni-WSVkb_Lh19qiXV6XwE?purpose=inline)
+
+[netsma.tistory.com](https://netsma.tistory.com/8?utm_source=chatgpt.com)
+
 В списке должен появиться контейнер `my-mysql`.
 
-Затем посмотри журнал запуска:
+## Шаг 4. Проверка файлов базы данных
+
+Выполни:
 
 ```
-docker logs my-mysql
+docker exec -it my-mysql ls -la /var/lib/mysql
 ```
 
-MySQL может запускаться некоторое время. Для проверки готовности выполни:
+Ты увидишь файлы и каталоги MySQL, например:
 
-```
-docker exec my-mysql mysqladmin ping -uroot -p123
-```
+- `ibdata1`
+- `mysql`
+- `performance_schema`
+- `sys`
 
-Ожидаемый результат:
+Это внутренние файлы MySQL и InnoDB.
 
-```
-mysqld is alive
-```
+![Screen](2026-10-27_10-16-48.png)
 
-### Если контейнер не запускается
+## Шаг 5. Подключение к MySQL
 
-Если получишь ошибку `Conflict. The container name "/my-mysql" is already in use`, контейнер с таким именем уже существует. Проверь его:
-
-```
-docker ps -a
-```
-
-Если он остановлен, попробуй:
-
-```
-docker start my-mysql
-```
-
-Если контейнер уже существует и работает, не запускай `docker run` повторно — переходи к следующему шагу.
-
-## Шаг 3. Подключись к MySQL
-
-Выполни в Git Bash:
+Выполни:
 
 ```
 docker exec -it my-mysql mysql --default-character-set=utf8mb4 -uroot -p
 ```
 
-Когда появится запрос:
+Появится запрос:
 
 ```
 Enter password:
@@ -190,7 +155,7 @@ Enter password:
 123
 ```
 
-При вводе пароль может не отображаться — это нормально.
+Символы пароля при вводе отображаться не будут — это нормально.
 
 Если подключение прошло успешно, появится приглашение:
 
@@ -198,673 +163,506 @@ Enter password:
 mysql>
 ```
 
-Теперь ты работаешь внутри MySQL. Важно различать две среды:
+Подключение выполнено
 
-- Команды `docker ...` вводятся в Git Bash.
-- Команды `CREATE DATABASE`, `SELECT`, `INSERT` и другие SQL-команды вводятся после появления `mysql>`.
+Теперь все SQL-команды будем выполнять непосредственно внутри MySQL.
 
-### 3.1. Проверь кодировку
+## Шаг 6. Просмотр баз данных
 
 Введи:
-
-```
-SHOW VARIABLES LIKE 'character_set%';
-```
-
-Убедись, что параметры `character_set_client`, `character_set_connection` и `character_set_results` имеют значение `utf8mb4`.
-
-Затем посмотри существующие базы:
 
 ```
 SHOW DATABASES;
 ```
 
-В списке будут системные базы MySQL. Пока не удаляй их.
+Появится список системных баз данных MySQL.
 
-## Шаг 4. Создай учебную базу данных
-
-Внутри `mysql>` выполни:
+Например:
 
 ```
-CREATE DATABASE sql_practice
-    CHARACTER SET utf8mb4
-    COLLATE utf8mb4_unicode_ci;
+information_schema
+mysql
+performance_schema
+sys
 ```
 
-Выбери созданную базу:
+Это нормально. Пока пользовательских баз данных нет.
+
+Получить справку по командам можно так:
 
 ```
-USE sql_practice;
+help
 ```
 
-Проверь результат:
+## Шаг 7. Создание базы данных
+
+Создадим базу `my_database` с поддержкой русского языка.
+
+Выполни:
 
 ```
-SELECT DATABASE();
+CREATE DATABASE my_database
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
 ```
 
-Ожидаемый результат — `sql_practice`.
-
-Если база уже существует, не создавай её повторно. Просто выполни `USE sql_practice;`.
-
-## Шаг 5. Создай таблицы
-
-Для практики в задании используются две связанные таблицы:
-
-- `customers` — клиенты.
-- `orders` — заказы клиентов.
-
-Скопируй весь следующий блок в MySQL:
+Проверь создание:
 
 ```
-CREATE TABLE customers (
+SHOW DATABASES;
+```
+
+В списке должна появиться:
+
+```
+my_database
+```
+
+![Screen](2026-11-05_13-27-18.png)
+
+Теперь выбери эту базу:
+
+```
+USE my_database;
+```
+
+MySQL должен ответить:
+
+```
+Database changed
+```
+
+![Screen](2026-10-27_10-18-18.png)
+
+## Шаг 8. Создание таблицы users
+
+Создадим таблицу для хранения пользователей.
+
+Выполни:
+
+```
+CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    city VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
-CREATE TABLE orders (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    customer_id INT NOT NULL,
-    order_date DATE NOT NULL,
-    amount DECIMAL(10, 2) NOT NULL,
-    status VARCHAR(20) DEFAULT 'new',
-    FOREIGN KEY (customer_id) REFERENCES customers(id)
+    email VARCHAR(100) NOT NULL UNIQUE
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-Что означают основные элементы:
+Что означает каждая колонка:
 
-| Элемент          | Назначение                                   |
-| ---------------- | -------------------------------------------- |
-| `id`             | Уникальный идентификатор записи              |
-| `AUTO_INCREMENT` | Автоматическое увеличение ID                 |
-| `PRIMARY KEY`    | Первичный ключ                               |
-| `NOT NULL`       | Обязательное значение                        |
-| `UNIQUE`         | Запрет повторяющихся email                   |
-| `FOREIGN KEY`    | Связь заказа с клиентом                      |
-| `DECIMAL(10, 2)` | Денежная сумма с двумя знаками после запятой |
+| Поле             | Назначение                    |
+| ---------------- | ----------------------------- |
+| `id`             | Уникальный номер пользователя |
+| `name`           | Имя пользователя              |
+| `email`          | Электронная почта             |
+| `AUTO_INCREMENT` | Автоматическое увеличение ID  |
+| `PRIMARY KEY`    | Первичный ключ                |
+| `UNIQUE`         | Запрещает повторение email    |
+| `NOT NULL`       | Запрещает пустое значение     |
 
-### 5.1. Проверь таблицы
+Проверим, что таблица создана:
 
 ```
 SHOW TABLES;
 ```
 
-Должны появиться `customers` и `orders`.
+Должно появиться:
 
-Посмотри структуру каждой таблицы:
-
-```
-DESCRIBE customers;
-DESCRIBE orders;
-```
-
-## Шаг 6. Добавь тестовые данные
-
-Сначала заполним клиентов:
-
-```
-INSERT INTO customers (name, email, city) VALUES
-('Иван Иванов', 'ivan@example.com', 'Москва'),
-('Пётр Петров', 'petr@example.com', 'Санкт-Петербург'),
-('Мария Сидорова', 'maria@example.com', 'Москва'),
-('Алексей Смирнов', 'alex@example.com', 'Казань'),
-('Ольга Кузнецова', 'olga@example.com', 'Новосибирск');
-```
-
-Теперь добавим заказы:
-
-```
-INSERT INTO orders
-    (customer_id, order_date, amount, status)
-VALUES
-    (1, '2026-10-01', 1500.00, 'paid'),
-    (1, '2026-10-05', 2300.50, 'paid'),
-    (2, '2026-10-03', 800.00, 'new'),
-    (3, '2026-10-07', 4200.00, 'paid'),
-    (3, '2026-10-10', 1100.00, 'cancelled'),
-    (4, '2026-10-12', 950.00, 'new');
-```
-
-В таблице заказов `customer_id` ссылается на `id` из таблицы клиентов. Поэтому сначала добавляются клиенты, а уже потом их заказы.
-
-### 6.1. Проверь, что данные добавились
-
-```
-SELECT * FROM customers;
-SELECT * FROM orders;
-```
-
-Должны отображаться 5 клиентов и 6 заказов.
-
-Если хочешь сохранить результаты для отчёта, сделай скриншот таблиц с данными.
-
-## Шаг 7. Выполни CRUD-операции
-
-CRUD — это четыре основных действия с данными: создание, чтение, обновление и удаление.
-
-### 7.1. Create — добавление записи
-
-```
-INSERT INTO customers (name, email, city)
-VALUES ('Павел Иванов', 'pavel@example.com', 'Москва');
-```
-
-Проверь:
-
 ```
-SELECT * FROM customers;
+users
 ```
-
-### 7.2. Read — чтение записей
-
-Получить всех клиентов:
+![Screen](2026-11-05_13-30-03.png)
 
-```
-SELECT * FROM customers;
-```
+## Шаг 9. Добавление данных в таблицу
 
-Получить только имена и города:
+Добавим трёх пользователей:
 
 ```
-SELECT name, city FROM customers;
+INSERT INTO users (name, email) VALUES
+('Иван Иванов', 'ivan@example.com'),
+('Пётр Петров', 'petr@example.com'),
+('Мария Сидорова', 'maria@example.com');
 ```
 
-Найти клиента по ID:
+Проверим добавленные данные:
 
 ```
-SELECT * FROM customers WHERE id = 1;
+SELECT * FROM users;
 ```
-
-### 7.3. Update — обновление записи
 
-```
-UPDATE customers
-SET city = 'Екатеринбург'
-WHERE id = 4;
-```
+Ожидаемый результат:
 
-Проверь:
+| id | name           | email              |
+| -- | -------------- | ------------------ |
+| 1  | Иван Иванов    | ivan\@example.com  |
+| 2  | Пётр Петров    | petr\@example.com  |
+| 3  | Мария Сидорова | maria\@example.com |
 
-```
-SELECT * FROM customers WHERE id = 4;
-```
+Данные добавлены
 
-### 7.4. Delete — удаление записи
+![Screen](2026-11-05_13-31-46.png)
 
-Для проверки можно удалить добавленного ранее клиента:
+## Шаг 10. Просмотр данных
 
-```
-DELETE FROM customers
-WHERE email = 'pavel@example.com';
-```
+Попробуем несколько вариантов запросов.
 
-Проверь:
+1\. Вывести всю таблицу:
 
 ```
-SELECT * FROM customers;
+SELECT * FROM users;
 ```
-
-Важно: всегда проверяй условие `WHERE` перед выполнением `UPDATE` и `DELETE`. Если забыть условие, можно изменить или удалить все записи таблицы.
-
-## Шаг 8. Освой фильтрацию, сортировку и ограничение
 
-Следующие запросы выполняй по одному или целым блоком.
+2\. Вывести только имена:
 
-### 8.1. Фильтрация через `WHERE`
-
 ```
--- Клиенты из Москвы
-SELECT * FROM customers
-WHERE city = 'Москва';
-
--- Заказы дороже 1000
-SELECT * FROM orders
-WHERE amount > 1000;
-
--- Оплаченные заказы дороже 1500
-SELECT * FROM orders
-WHERE status = 'paid' AND amount > 1500;
-
--- Новые или отменённые заказы
-SELECT * FROM orders
-WHERE status = 'new' OR status = 'cancelled';
+SELECT name FROM users;
 ```
 
-### 8.2. Сортировка через `ORDER BY`
+3\. Вывести имена и электронную почту:
 
 ```
--- Клиенты по имени
-SELECT * FROM customers
-ORDER BY name ASC;
-
--- Заказы от самых дорогих к самым дешёвым
-SELECT * FROM orders
-ORDER BY amount DESC;
+SELECT name, email FROM users;
 ```
 
-`ASC` — по возрастанию, `DESC` — по убыванию.
+4\. Найти пользователя по ID:
 
-### 8.3. Ограничение через `LIMIT`
-
 ```
-SELECT * FROM orders
-ORDER BY amount DESC
-LIMIT 3;
+SELECT * FROM users WHERE id = 1;
 ```
 
-Запрос вернёт три самых дорогих заказа.
+5\. Вывести одну запись в вертикальном формате:
 
-### 8.4. Поиск через `LIKE`
-
 ```
--- Имена, начинающиеся на И
-SELECT * FROM customers
-WHERE name LIKE 'И%';
-
--- Email, заканчивающиеся на @example.com
-SELECT * FROM customers
-WHERE email LIKE '%@example.com';
+SELECT * FROM users WHERE id = 1\G
 ```
 
-Символ `%` обозначает любую последовательность символов.
+## Шаг 11. Добавление новых пользователей
 
-### 8.5. Диапазоны и списки
+Добавим ещё двух пользователей:
 
 ```
-SELECT * FROM orders
-WHERE amount BETWEEN 1000 AND 3000;
+INSERT INTO users (name, email)
+VALUES ('Павел Иванов', 'pavel@example.com');
 
-SELECT * FROM customers
-WHERE city IN ('Москва', 'Казань');
+INSERT INTO users (name, email)
+VALUES ('Марк Аврелий', 'mark@example.com');
 ```
 
-### 8.6. Поиск пустых значений
+Проверим:
 
 ```
-SELECT * FROM customers
-WHERE city IS NULL;
+SELECT * FROM users;
 ```
 
-Пока у всех добавленных клиентов заполнен город, поэтому результат может быть пустым. Это нормально.
 
-## Шаг 9. Выполни агрегатные запросы
+![Screen](2026-11-05_13-33-49.png)
 
-Агрегатные функции позволяют рассчитывать показатели сразу по нескольким записям.
 
-```
--- Количество заказов
-SELECT COUNT(*) AS total_orders
-FROM orders;
-
--- Общая сумма заказов
-SELECT SUM(amount) AS total_sum
-FROM orders;
+Теперь в таблице должно быть пять пользователей.
 
--- Средняя сумма заказа
-SELECT AVG(amount) AS avg_amount
-FROM orders;
+## Шаг 12. Обновление данных
 
--- Минимальная и максимальная сумма
-SELECT MIN(amount) AS min_amount,
-       MAX(amount) AS max_amount
-FROM orders;
-```
+Изменим имя пользователя с `id = 1`.
 
-### 9.1. Группировка через `GROUP BY`
+Выполни:
 
-Количество заказов и их общая сумма для каждого клиента:
-
 ```
-SELECT customer_id,
-       COUNT(*) AS order_count,
-       SUM(amount) AS total_amount
-FROM orders
-GROUP BY customer_id;
+UPDATE users
+SET name = 'Иван Петров'
+WHERE id = 1;
 ```
 
-### 9.2. Фильтрация групп через `HAVING`
+Проверим результат:
 
 ```
-SELECT customer_id,
-       SUM(amount) AS total_amount
-FROM orders
-GROUP BY customer_id
-HAVING SUM(amount) > 2000;
+SELECT * FROM users;
 ```
-
-Разница простая:
 
-- `WHERE` фильтрует отдельные строки до группировки.
-- `HAVING` фильтрует получившиеся группы после группировки.
+Имя первого пользователя должно измениться на `Иван Петров`.
 
-## Шаг 10. Изучи соединения таблиц `JOIN`
+Также можно проверить только одну запись:
 
-Соединения позволяют получать информацию сразу из нескольких таблиц. В нашем случае можно узнать имя клиента, дату его заказа, сумму и статус.
-
-### 10.1. `INNER JOIN` — только совпадающие записи
-
 ```
-SELECT c.name,
-       o.order_date,
-       o.amount,
-       o.status
-FROM customers c
-INNER JOIN orders o ON c.id = o.customer_id;
+SELECT * FROM users WHERE id = 1;
 ```
 
-В результате будут клиенты, у которых есть заказы.
 
-### 10.2. `LEFT JOIN` — все клиенты
-
-```
-SELECT c.name,
-       o.id AS order_id,
-       o.amount
-FROM customers c
-LEFT JOIN orders o ON c.id = o.customer_id;
-```
+Важно: всегда используй `WHERE` при обновлении конкретной записи. Без него изменятся данные во всех строках таблицы.
 
-Запрос показывает всех клиентов, в том числе тех, у кого нет заказов. В полях отсутствующего заказа будет `NULL`.
+## Шаг 13. Удаление записи
 
-### 10.3. `RIGHT JOIN` — все заказы
+Сначала посмотрим содержимое таблицы:
 
 ```
-SELECT c.name,
-       o.id AS order_id
-FROM customers c
-RIGHT JOIN orders o ON c.id = o.customer_id;
+SELECT * FROM users;
 ```
 
-Этот запрос сохраняет все строки из таблицы `orders`, даже если соответствующего клиента нет в левой таблице.
+Удалим пользователя с `id = 2`:
 
-### 10.4. Объедини `JOIN` и `GROUP BY`
-
-Посчитай количество заказов и общую сумму для каждого клиента:
-
 ```
-SELECT c.name,
-       COUNT(o.id) AS order_count,
-       COALESCE(SUM(o.amount), 0) AS total_amount
-FROM customers c
-LEFT JOIN orders o ON c.id = o.customer_id
-GROUP BY c.id, c.name
-ORDER BY total_amount DESC;
+DELETE FROM users WHERE id = 2;
 ```
-
-Здесь `COALESCE` заменяет `NULL` на `0`, если у клиента нет заказов.
 
-## Шаг 11. Подзапросы и `UNION`
+Проверим:
 
-### 11.1. Подзапрос с `IN`
-
-Найди клиентов, у которых есть заказ дороже 1000:
-
 ```
-SELECT name, city
-FROM customers
-WHERE id IN (
-    SELECT customer_id
-    FROM orders
-    WHERE amount > 1000
-);
+SELECT * FROM users;
 ```
 
-### 11.2. Подзапрос с `EXISTS`
+Пользователь с ID 2 должен исчезнуть.
 
-Клиенты, у которых есть хотя бы один заказ:
+Важно: не выполняй `DELETE FROM users;` без `WHERE`, если не хочешь удалить все записи.
 
-```
-SELECT name
-FROM customers c
-WHERE EXISTS (
-    SELECT 1
-    FROM orders o
-    WHERE o.customer_id = c.id
-);
-```
+![Screen](2026-11-05_13-36-00.png)
 
-Клиенты без заказов:
+## Шаг 14. Работа с журналом SQL-команд
 
-```
-SELECT name
-FROM customers c
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM orders o
-    WHERE o.customer_id = c.id
-);
-```
+Теперь проверим, записывает ли MySQL выполненные запросы.
 
-### 11.3. Объединение результатов через `UNION`
+Для начала выполни:
 
 ```
-SELECT name, city
-FROM customers
-WHERE city = 'Москва'
-
-UNION
-
-SELECT name, city
-FROM customers
-WHERE city = 'Казань';
+SHOW VARIABLES LIKE 'general_log';
 ```
 
-`UNION` объединяет результаты запросов и удаляет повторяющиеся строки. `UNION ALL` сохраняет повторы. Количество столбцов в обеих частях должно совпадать.&#x20;
+Ожидаемый результат:
 
-MySQL.md
-
-
-
-## Шаг 12. Измени данные и структуру таблиц
-
-### 12.1. Обновление данных
-
 ```
-UPDATE customers
-SET city = 'Екатеринбург'
-WHERE id = 4;
-
-UPDATE orders
-SET status = 'paid'
-WHERE id = 3;
+general_log    ON
 ```
 
-Проверь изменения:
+![Screen](2026-11-05_13-43-19.png)
 
-```
-SELECT * FROM customers WHERE id = 4;
-SELECT * FROM orders WHERE id = 3;
-```
 
-### 12.2. Добавление нового столбца
+Проверим расположение файла:
 
 ```
-ALTER TABLE customers
-ADD COLUMN phone VARCHAR(20);
+SHOW VARIABLES LIKE 'general_log_file';
 ```
 
-Заполни его у одного клиента:
+Теперь посмотрим журнал непосредственно через таблицу MySQL:
 
 ```
-UPDATE customers
-SET phone = '123'
-WHERE id = 4;
+SELECT event_time, command_type, argument
+FROM mysql.general_log
+WHERE user_host LIKE 'root@%'
+ORDER BY event_time DESC;
 ```
 
-Проверь результат:
+Чтобы убрать из результатов некоторые служебные команды:
 
 ```
-SELECT * FROM customers WHERE id = 4;
+SELECT event_time, command_type, argument
+FROM mysql.general_log
+WHERE user_host LIKE 'root@%'
+  AND argument NOT LIKE 'SET NAMES%'
+  AND argument NOT LIKE 'SHOW VARIABLES%'
+  AND argument NOT LIKE 'SELECT @@%'
+  AND argument NOT LIKE 'SET SESSION sql_log_off%'
+ORDER BY event_time DESC;
 ```
 
-### 12.3. Изменение типа столбца
-
-```
-ALTER TABLE customers
-MODIFY COLUMN phone VARCHAR(30);
-```
+В журнале должны присутствовать SQL-команды, которые ты выполнял.
 
-### 12.4. Удаление столбца
+При необходимости отключить запись запросов для текущей сессии:
 
 ```
-ALTER TABLE customers
-DROP COLUMN phone;
+SET SESSION sql_log_off = ON;
 ```
-
-Выполняй удаление столбца только после проверки: данные в нём будут потеряны.&#x20;
-
-MySQL.md
-
-
-
-## Шаг 13. Создай резервную копию базы данных
-
-Это одна из главных задач из твоего файла.
 
-Сначала выйди из MySQL:
+Для продолжения работы можно выйти из MySQL:
 
 ```
 \q
 ```
 
-Теперь ты снова находишься в Git Bash.
+## Шаг 15. Проверка файла general.log
 
-Убедись, что работаешь в папке проекта:
+Теперь вернёмся в Git Bash.
 
-```
-cd ~/my-mysql
-```
-
-Создай дамп:
+Проверь наличие журнала:
 
 ```
-docker exec -e MYSQL_PWD=123 my-mysql \
-  mysqldump -uroot sql_practice > dump.sql
-```
-
-Проверь, что файл появился:
-
-```
-ls -lh dump.sql
+docker exec my-mysql ls -la /var/lib/mysql/general.log
 ```
 
 Посмотри содержимое:
 
 ```
-head -n 30 dump.sql
+docker exec my-mysql cat /var/lib/mysql/general.log
 ```
 
-В файле должны находиться SQL-команды для восстановления структуры таблиц и их данных.
-
-Дамп сохраняет базу в текстовом SQL-файле. Храни его отдельно от контейнера: это позволит восстановить данные, если контейнер или хранилище будут потеряны.
-
-### 13.1. Проверь, что дамп содержит таблицы
-
-Выполни:
+Скопируй журнал из контейнера в папку проекта:
 
 ```
-grep -E 'CREATE TABLE|INSERT INTO' dump.sql
+docker cp my-mysql:/var/lib/mysql/general.log ./general.log
 ```
 
-Если команда показывает определения таблиц и вставку данных, это хороший признак, что дамп сформирован.
+Теперь в каталоге `my-mysql` должен появиться файл `general.log`.
 
-### 13.2. Как восстановить дамп
-
-Если понадобится восстановление в существующую базу `sql_practice`, можно выполнить:
+При необходимости очистить журнал внутри контейнера:
 
 ```
-docker exec -i -e MYSQL_PWD=123 my-mysql \
-  mysql -uroot sql_practice < dump.sql
+docker exec my-mysql sh -c ': > /var/lib/mysql/general.log'
 ```
 
-Внимание: восстановление поверх существующих таблиц может завершиться ошибкой из-за уже имеющихся таблиц и записей. Для полноценной проверки восстановления лучше использовать отдельную тестовую базу и предварительно убедиться, что дамп содержит необходимые данные.
+## Шаг 16. Создание резервной копии базы данных
 
-MySQL.md
+Важный этап задания
 
-## Шаг 14. Проверь управление контейнером
+Перед созданием дампа убедись, что база `my_database` существует и в ней сохранены данные.
 
-Эти команды выполняются в Git Bash, а не в MySQL.
+Выйди из MySQL, если ещё находишься внутри:
 
-Остановка контейнера:
+```
+\q
+```
+
+Теперь в Git Bash выполни:
+
+```
+docker exec -e MYSQL_PWD=123 my-mysql mysqldump -uroot my_database > dump.sql
+```
+
+Команда создаст файл `dump.sql` в текущей папке проекта.
+
+Проверим наличие файла:
+
+```
+ls -lh dump.sql
+```
+
+Посмотрим содержимое:
+
+```
+cat dump.sql
+```
+
+Внутри должны находиться SQL-инструкции для восстановления структуры таблицы и её данных.
+
+Почему используется `my_database`, а не `sql_practice`?
+
+В исходном материале в команде создания дампа указана база `sql_practice`, хотя ранее создаётся `my_database`. Это несоответствие. В нашем выполнении используем именно `my_database`.
+
+## Шаг 17. Управление контейнером
+
+Теперь научимся управлять MySQL через Docker.
+
+Остановить контейнер:
 
 ```
 docker stop my-mysql
 ```
 
-Повторный запуск:
+Проверить состояние:
+
+```
+docker ps -a
+```
+
+Повторно запустить контейнер:
 
 ```
 docker start my-mysql
 ```
 
-Просмотр логов:
+Посмотреть логи Docker:
 
 ```
 docker logs my-mysql
 ```
 
-Проверка доступности MySQL:
+Сохранить логи Docker в файл:
 
 ```
-docker exec my-mysql mysqladmin ping -uroot -p123
+docker logs my-mysql > log.txt
 ```
 
-Так ты убедишься, что контейнер можно остановить и запустить снова. Благодаря тому, что используется именованный том `mysql_data`, данные сохраняются при обычном удалении контейнера, если сам том не удалять.&#x20;
+Повторно подключиться к MySQL:
 
-MySQL.md
+```
+docker exec -it my-mysql mysql -uroot -p
+```
 
+Введи пароль `123`.
 
+Данные сохраняются в Docker-томе `mysql_data`, поэтому остановка и повторный запуск контейнера не должны удалять базу.
 
-## Шаг 15. Что должно остаться после выполнения
+## Шаг 18. Итоговая проверка проекта
 
-В папке `my-mysql` ожидаются следующие файлы:
+Проверь, что в папке `my-mysql` находятся следующие файлы:
 
+```
 my-mysql/
+│
+├── my.cnf
+├── general.log
+├── dump.sql
+└── log.txt
+```
 
-Папка проекта
+Проверь контейнер:
 
-my.cnf
+```
+docker ps
+```
 
-Конфигурация кодировки MySQL
+Проверь том:
 
-dump.sql
+```
+docker volume ls
+```
 
-Резервная копия учебной базы данных
+Проверь, что база и таблица существуют:
 
-Данные самой базы хранятся в Docker volume `mysql_data`, а не в этой папке.
+```
+docker exec -it my-mysql mysql -uroot -p
+```
 
-### Итоговый контрольный список
+Внутри MySQL выполни:
 
-Проверка перед сдачей
+```
+SHOW DATABASES;
 
-0/11
+USE my_database;
 
-Docker Desktop запущен, контейнер my-mysql работает
+SHOW TABLES;
 
-Подключение к MySQL выполняется без ошибок
+SELECT * FROM users;
+```
 
-Создана база sql_practice
+Если данные отображаются, значит основные этапы выполнены.
 
-Созданы таблицы customers и orders
+## Шаг 19. Удаление таблицы и базы данных (дополнительное задание)
 
-Добавлены тестовые записи
+В исходном файле также присутствуют команды удаления.
 
-Проверены INSERT, SELECT, UPDATE и DELETE
+Внимание: удаление необратимо без резервной копии
 
-Выполнены фильтрация и сортировка
+Удалить таблицу:
 
-Проверены агрегаты и GROUP BY
+```
+DROP TABLE users;
+```
 
-Выполнены запросы JOIN, подзапросы и UNION
+Проверить:
 
-Проверены ALTER TABLE и управление контейнером
+```
+SHOW TABLES;
+```
 
-Файл dump.sql создан и содержит SQL-данные
+Удалить базу данных:
 
-Рекомендация: для отчёта преподавателю сделай скриншоты запущенного контейнера (`docker ps`), таблиц с данными (`SELECT * FROM customers;` и `SELECT * FROM orders;`), результата `JOIN` и созданного файла `dump.sql`.
+```
+DROP DATABASE my_database;
+```
 
-Важный момент: не выполняй `DROP DATABASE sql_practice;` до создания и проверки резервной копии. Эта команда удаляет учебную базу, и для продолжения работы её придётся создавать заново.
+Проверить:
+
+```
+SHOW DATABASES;
+```
+
+Не выполняй этот шаг до создания `dump.sql`! Иначе потеряешь данные, которые ещё не были сохранены в резервной копии.
+
+
