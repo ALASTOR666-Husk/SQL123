@@ -109,9 +109,6 @@ MSYS_NO_PATHCONV=1 docker run --name my-mysql \
 ```
 docker ps
 ```
-
-[SK네트웍스 AI캠프 8일차 - MySQL, ERD](https://images.openai.com/static-rsc-4/J5zaqLKLErQJrm1YkyUWQou7QPjl2c_srn1Z0v_5SgTbj1MZ9ePf_TdFQyFVFOVNviEd8RcUdPQLiwYeReRzE4omu4pFgoqj1VlM_FzSO0Hlzl_QEIQIsRh0saCwEBbcbHBJMLqoO2mwb6VO4zxqxTni-WSVkb_Lh19qiXV6XwE?purpose=inline)
-
 [netsma.tistory.com](https://netsma.tistory.com/8?utm_source=chatgpt.com)
 
 В списке должен появиться контейнер `my-mysql`.
